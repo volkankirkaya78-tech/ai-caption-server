@@ -2,17 +2,84 @@ import express from "express"
 import cors from "cors"
 import dotenv from "dotenv"
 import OpenAI from "openai"
+import { createClient } from "@supabase/supabase-js"
 
 dotenv.config()
 
 const app = express()
 
 app.use(cors())
+
+/* LemonSqueezy webhook raw body ister */
+app.use("/webhook", express.raw({ type: "application/json" }))
+
 app.use(express.json({ limit: "50mb" }))
 app.use(express.urlencoded({ limit: "50mb", extended: true }))
 
+/* ==============================
+SUPABASE
+============================== */
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
+
+/* ==============================
+OPENAI
+============================== */
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
+})
+
+/* ==============================
+LEMON SQUEEZY WEBHOOK
+============================== */
+
+app.post("/webhook", async (req, res) => {
+
+  try {
+
+    const payload = JSON.parse(req.body.toString())
+
+    const event = payload.meta?.event_name
+
+    if (event === "order_created" || event === "subscription_created") {
+
+      const email = payload.data?.attributes?.user_email
+
+      console.log("💰 Payment received from:", email)
+
+      if(email){
+
+        await supabase
+          .from("users")
+          .upsert(
+            {
+              email: email,
+              plan: "pro"
+            },
+            {
+              onConflict: "email"
+            }
+          )
+
+        console.log("✅ User upgraded to PRO")
+
+      }
+
+    }
+
+    res.sendStatus(200)
+
+  } catch (error) {
+
+    console.log("Webhook error:", error)
+    res.sendStatus(500)
+
+  }
+
 })
 
 /* ==============================
@@ -78,6 +145,7 @@ Caption style: ${style}`
 
   } catch (error) {
 
+    console.log(error)
     res.status(500).json({ error: "caption generation failed" })
 
   }
