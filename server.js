@@ -41,33 +41,27 @@ app.post("/webhook", async (req, res) => {
 
   try {
 
-    const payload = JSON.parse(req.body.toString())
+    console.log("Webhook received:", JSON.stringify(req.body, null, 2))
 
-    const event = payload.meta?.event_name
+    const event = req.body.meta.event_name
 
     if (event === "order_created" || event === "subscription_created") {
 
-      const email = payload.data?.attributes?.user_email
+      const email =
+        req.body.data.attributes.user_email ||
+        req.body.data.attributes.customer_email ||
+        req.body.data.attributes.email
 
       console.log("💰 Payment received from:", email)
 
-      if(email){
+      await supabase
+        .from("users")
+        .upsert({
+          email: email,
+          plan: "pro"
+        })
 
-        await supabase
-          .from("users")
-          .upsert(
-            {
-              email: email,
-              plan: "pro"
-            },
-            {
-              onConflict: "email"
-            }
-          )
-
-        console.log("✅ User upgraded to PRO")
-
-      }
+      console.log("✅ User upgraded to PRO")
 
     }
 
@@ -81,6 +75,7 @@ app.post("/webhook", async (req, res) => {
   }
 
 })
+
 
 /* ==============================
 CAPTION GENERATOR
