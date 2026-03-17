@@ -43,25 +43,41 @@ app.post("/webhook", async (req, res) => {
 
     console.log("Webhook received:", JSON.stringify(req.body, null, 2))
 
-    const event = req.body.meta.event_name
+    const event = req.body?.meta?.event_name
 
-    if (event === "order_created" || event === "subscription_created") {
+    // ödeme ile ilgili tüm eventleri yakala
+    if (
+      event === "order_created" ||
+      event === "subscription_created" ||
+      event === "subscription_payment_success"
+    ) {
 
       const email =
-        req.body.data.attributes.user_email ||
-        req.body.data.attributes.customer_email ||
-        req.body.data.attributes.email
+        req.body?.data?.attributes?.user_email ||
+        req.body?.data?.attributes?.customer_email ||
+        req.body?.data?.attributes?.email ||
+        req.body?.data?.attributes?.user?.email ||
+        req.body?.data?.attributes?.customer?.email
+
+      if (!email) {
+        console.log("Email not found in webhook payload")
+        return res.sendStatus(200)
+      }
 
       console.log("💰 Payment received from:", email)
 
-      await supabase
+      const { error } = await supabase
         .from("users")
         .upsert({
           email: email,
           plan: "pro"
         })
 
-      console.log("✅ User upgraded to PRO")
+      if (error) {
+        console.log("Supabase error:", error)
+      } else {
+        console.log("✅ User upgraded to PRO")
+      }
 
     }
 
