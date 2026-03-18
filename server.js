@@ -3,7 +3,6 @@ import cors from "cors"
 import dotenv from "dotenv"
 import OpenAI from "openai"
 import { createClient } from "@supabase/supabase-js"
-import dotenv from "dotenv"
 
 dotenv.config()
 
