@@ -38,29 +38,26 @@ LEMON SQUEEZY WEBHOOK
 ============================== */
 
 app.post("/webhook", async (req, res) => {
-
   try {
 
-    console.log("Webhook received:", JSON.stringify(req.body, null, 2))
+    // 🔥 RAW BODY → JSON PARSE
+    const rawBody = req.body.toString()
+    const body = JSON.parse(rawBody)
 
-    const event = req.body?.meta?.event_name
+    console.log("🔥 Webhook geldi:", JSON.stringify(body, null, 2))
 
-    // ödeme ile ilgili tüm eventleri yakala
+    const event = body?.meta?.event_name
+
     if (
       event === "order_created" ||
       event === "subscription_created" ||
       event === "subscription_payment_success"
     ) {
 
-      const email =
-        req.body?.data?.attributes?.user_email ||
-        req.body?.data?.attributes?.customer_email ||
-        req.body?.data?.attributes?.email ||
-        req.body?.data?.attributes?.user?.email ||
-        req.body?.data?.attributes?.customer?.email
+      const email = body?.data?.attributes?.user_email
 
       if (!email) {
-        console.log("Email not found in webhook payload")
+        console.log("❌ Email bulunamadı")
         return res.sendStatus(200)
       }
 
@@ -68,28 +65,26 @@ app.post("/webhook", async (req, res) => {
 
       const { error } = await supabase
         .from("users")
-        .upsert({
-          email: email,
-          plan: "pro"
-        })
+        .upsert([
+          {
+            email: email,
+            plan: "pro"
+          }
+        ])
 
       if (error) {
-        console.log("Supabase error:", error)
+        console.log("❌ Supabase error:", error)
       } else {
         console.log("✅ User upgraded to PRO")
       }
-
     }
 
     res.sendStatus(200)
 
   } catch (error) {
-
-    console.log("Webhook error:", error)
+    console.log("❌ Webhook error:", error)
     res.sendStatus(500)
-
   }
-
 })
 
 
